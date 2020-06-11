@@ -172,3 +172,4 @@ scrape_configs:
         target_label: instance
       - target_label: __address__
         replacement: {{ remote_grains.fqdn }}:9115
+{%- endfor %}
