@@ -1,0 +1,13 @@
+[Unit]
+Description=Update the text file for node_exporter
+
+[Timer]
+OnBootSec=15
+OnCalendar=*:0/15
+Persistent=true
+Unit=checkrestart_exporter.service
+
+[Install]
+WantedBy=basic.target
+
+

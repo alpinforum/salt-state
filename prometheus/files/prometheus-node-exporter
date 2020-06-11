@@ -1,0 +1,8 @@
+ARGS="--collector.textfile.directory=/var/prometheus/ \
+      --collector.filesystem.ignored-mount-points=^/(sys|proc|dev|run|var/lib/docker)($|/) \
+      --collector.interrupts \
+      --collector.logind \
+      --collector.systemd \
+      --collector.tcpstat \
+      --no-collector.infiniband \
+      --no-collector.ipvs"

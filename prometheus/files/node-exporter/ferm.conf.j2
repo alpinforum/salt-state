@@ -1,0 +1,7 @@
+domain (ip ip6) {
+  table filter {
+    chain INPUT {
+      proto tcp dport (9100) saddr ({% for e in salt['pillar.get']("prometheus:firewall:allow",[]) %}{{e}} {% endfor %}) ACCEPT;
+    }
+  }
+}

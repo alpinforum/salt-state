@@ -6,7 +6,7 @@
     - salt.minion
     - ssh.mosh
     #- ferm
-    #- prometheus.node-exporter
+    - prometheus.node-exporter
     - systemd
     - logrotate
     - common.path

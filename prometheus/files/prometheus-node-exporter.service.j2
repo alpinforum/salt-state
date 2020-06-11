@@ -1,0 +1,15 @@
+{%- from 'prometheus/map.jinja' import prometheus with context -%}
+
+[Unit]
+Description=Node Exporter for prometheus
+
+[Service]
+Restart=always
+EnvironmentFile=/etc/default/prometheus-node-exporter
+ExecStart=/opt/node_exporter-{{ prometheus['node_exporter_release'] }}.linux-amd64/node_exporter $ARGS
+ExecReload=/bin/kill -HUP $MAINPID
+TimeoutStopSec=20s
+SendSIGKILL=no
+
+[Install]
+WantedBy=multi-user.target

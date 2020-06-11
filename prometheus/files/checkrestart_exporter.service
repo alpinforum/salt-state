@@ -1,0 +1,7 @@
+[Unit]
+Description=Run the checkrestart prometheus exporter script
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/checkrestart_exporter.sh
+
