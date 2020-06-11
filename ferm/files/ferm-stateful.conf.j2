@@ -1,0 +1,30 @@
+# This file is managed by saltstack
+# If you modify anything in here you suck.
+#
+
+domain (ip ip6) {
+  table filter {
+    chain INPUT {
+      policy {{ salt['pillar.get']('firewall:input:policy', 'DROP') }};
+
+      interface lo ACCEPT;
+      {%- for key in salt['pillar.get']('firewall:interfaces:lan', []) %}
+      interface {{key}} ACCEPT;
+      {%- endfor %}
+
+      proto icmp ACCEPT;
+      proto tcp dport 22 ACCEPT;
+      mod state state (ESTABLISHED RELATED) ACCEPT;
+    }
+
+    chain OUTPUT {
+      policy {{ salt['pillar.get']('firewall:output:policy', 'ACCEPT') }};
+    }
+
+    chain FORWARD {
+      policy {{ salt['pillar.get']('firewall:forward:policy', 'DROP') }};
+    }
+  }
+}
+
+@include '/etc/ferm/conf.d/';
