@@ -27,11 +27,6 @@ ferm_conf_init:
     - require_in:
       - file: /etc/ferm/conf.d
 
-# deprecated: dependency issues on boot made us move to the systemd unit
-/etc/default/ferm:
-  file.managed:
-    - source: salt://ferm/files/ferm
-
 /etc/systemd/system/ferm.service:
   file.managed:
     - source: salt://ferm/files/ferm.service
