@@ -1,0 +1,37 @@
+# see "man logrotate" for details
+# rotate log files daily
+daily
+
+# keep 9 days worth of backlogs
+rotate 9
+
+# create new (empty) log files after rotating old ones
+create
+
+# uncommented to compres log files
+compress
+
+# if active, an archived log is compressed the next time that the log is rotated
+delaycompress
+
+# packages drop log rotation information into this directory
+include /etc/logrotate.d
+
+{%- if grains['osfinger'] != 'Debian-10' %}
+# no packages own wtmp, or btmp -- we'll rotate them here
+/var/log/wtmp {
+    missingok
+    monthly
+    create 0664 root utmp
+    rotate 1
+}
+
+/var/log/btmp {
+    missingok
+    monthly
+    create 0660 root utmp
+    rotate 1
+}
+{%- endif %}
+
+# system-specific logs may be configured here

@@ -1,0 +1,9 @@
+Package: *
+Pin: release n=sid
+Pin-Priority: -100
+
+{% for package in accumulator.get('apt.sid.pinning_exceptions', []) %}
+Package: {{ package }}
+Pin: release n=sid
+Pin-Priority: 900
+{% endfor %}

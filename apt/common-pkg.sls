@@ -1,0 +1,55 @@
+packages_base:
+  pkg.installed:
+    - pkgs:
+      - apt-listbugs
+      - ca-certificates
+      - curl
+      - dbus
+      - debian-goodies
+      - ethtool
+      - file
+      - git
+      - htop
+      - iftop
+      - ioping
+      - iotop
+      - iperf3
+      - iputils-tracepath
+      - jq
+      - knot-dnsutils
+      - man-db
+      - moreutils
+      - mlocate
+      - mtr-tiny
+      - ncdu
+      - ncurses-term
+      - needrestart
+      - netcat-openbsd
+      - psmisc
+      - python-augeas
+      - rsync
+      - strace
+      - sudo
+      - sysstat
+      - tcpdump
+      - tig
+      - tmux
+      - traceroute
+      - tree
+      - vim-nox
+      - wget
+      - whois
+      - zsh
+
+packages_purge:
+  pkg.purged:
+    - pkgs:
+      - inetd
+      - puppet
+      - puppet-common
+      - rsh-server
+      - silversearcher-ag
+      - telnet-server
+      - tftp-server
+      - xinetd
+      - ypserv
