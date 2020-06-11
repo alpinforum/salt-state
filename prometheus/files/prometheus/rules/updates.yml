@@ -1,0 +1,36 @@
+groups:
+- name: updates
+  rules:
+  - alert: RebootRequired
+    expr: node_reboot_required{job="node"} == 1
+    for: 4h
+    labels:
+      severity: high
+    annotations:
+      description: 'The instance requires an reboot'
+      summary: 'Instance {{ $labels.instance }} running an outdated kernel'
+  - alert: UpdatesPending
+    expr: apt_upgrades_pending > 0
+    for: 1d
+    labels:
+      severity: info
+    annotations:
+      description: 'The instance has updates pending'
+      summary: 'Instance {{ $labels.instance }} has {{ $value }} updates pending'
+  - alert: UpdatesPendingCritical
+    expr: apt_upgrades_pending{origin=~".*Security.*"} > 0
+    for: 4h
+    labels:
+      severity: critical
+    annotations:
+      description: 'The instance has critical updates pending'
+      summary: 'Instance {{ $labels.instance }} has {{ $value }} critical updates pending'
+  - alert: OutdatedLibs
+    expr: checkrestart_process_count > 0
+    for: 4h
+    labels:
+      severity: info
+    annotations:
+      description: 'Number of processes which run on outdated libs'
+      summary: 'Instance {{ $labels.instance }}: There are {{ $value }} processes with old libs.'
+      value: '{{ $value }}'

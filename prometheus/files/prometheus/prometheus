@@ -1,0 +1,2 @@
+# Set the command-line arguments to pass to the server.
+ARGS="--config.file /etc/prometheus/prometheus.yml --web.external-url=https://prometheus.margau.net --storage.tsdb.path=/metrics/prom2 --storage.tsdb.retention.time=120d --storage.tsdb.retention.size=4GB"

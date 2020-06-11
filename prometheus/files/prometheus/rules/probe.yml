@@ -1,0 +1,35 @@
+groups:
+- name: probe
+  rules:
+    - alert: ProbeFailed
+      expr: probe_success != 1
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        description: 'Probe {{ $labels.job }} for {{ $labels.instance }} failed'
+        summary: 'Probe {{ $labels.job }} for {{ $labels.instance }} failed'
+    - alert: ICMPtooLong
+      expr: sum(probe_icmp_duration_seconds) by (instance,job) > 0.1
+      for: 5m
+      labels:
+        severity: high
+      annotations:
+        description: 'Ping {{ $labels.job }} for {{ $labels.instance }} takes too long'
+        summary: 'Probe {{ $labels.job }} for {{ $labels.instance }} takes {{ $value | humanizeDuration }}'
+    - alert: CertExpiration
+      expr: probe_ssl_earliest_cert_expiry - time() < 31 * 24 * 3600
+      for: 5m
+      labels:
+        severity: high
+      annotations:
+        description: 'HTTPS Cert for {{ $labels.instance }} expiring soon'
+        summary: 'HTTPS Cert for {{ $labels.instance }} expiring in {{ $value | humanizeDuration }}'
+    - alert: ProbeTooLong
+      expr: probe_duration_seconds > 0.5
+      for: 5m
+      labels:
+        severity: high
+      annotations:
+        description: 'Probe {{ $labels.job }} for {{ $labels.instance }} takes too long'
+        summary: 'Probe {{ $labels.job }} for {{ $labels.instance }} takes {{ $value | humanizeDuration }}'

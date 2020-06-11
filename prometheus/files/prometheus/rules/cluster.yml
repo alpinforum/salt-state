@@ -1,0 +1,11 @@
+groups:
+- name: alertmanager
+  rules:
+  - alert: ClusterDefect
+    expr: alertmanager_cluster_failed_peers > 0
+    for: 3m
+    labels:
+      severity: high
+    annotations:
+      description: 'The cluster node has failed peers'
+      summary: 'Alertmanager {{ $labels.instance }} has failed peers.'

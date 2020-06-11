@@ -1,0 +1,34 @@
+groups:
+- name: node
+  rules:
+  - alert: InstanceDown
+    expr: up{job="node"} == 0
+    for: 3m
+    labels:
+      severity: high
+    annotations:
+      description: 'The instance is down for more than 3 minutes'
+      summary: 'Instance {{ $labels.instance }} is down'
+  - alert: InstanceDown
+    expr: up{job="node"} == 0
+    for: 10m
+    labels:
+      severity: critical
+    annotations:
+      description: 'The instance is down for more than 10 minutes'
+      summary: 'Instance {{ $labels.instance }} is down'
+  - alert: ExporterDown
+    expr: up{job!="node"} == 0
+    for: 5m
+    labels:
+      severity: high
+    annotations:
+      description: 'An exporter for {{ $labels.job }} is down for more than 5 minutes'
+      summary: 'Exporter {{ $labels.instance }} is down'
+  - alert: NodeExporterTextfileStale
+    expr: time() - node_textfile_mtime_seconds >= 86400
+    labels:
+      severity: warning
+    annotations:
+      description: 'Node exporter textfile has gone stale.'
+      summary: 'Instance {{ $labels.instance }}: Node exporter textfile {{ $labels.file }} has gone stale.'

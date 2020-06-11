@@ -1,0 +1,396 @@
+global:
+  scrape_interval:     15s # By default, scrape targets every 15 seconds.
+  evaluation_interval: 15s # By default, scrape targets every 15 seconds.
+  # scrape_timeout is set to the global default (10s).
+
+  # Attach these labels to any time series or alerts when communicating with
+  # external systems (federation, remote storage, Alertmanager).
+  #external_labels:
+  #    monitor: 'example'
+
+# Alertmanager configuration
+alerting:
+  alert_relabel_configs:
+    - source_labels: [instance]
+      target_label: instance
+      regex: (.+):\d+
+  alertmanagers:
+  - scheme: http
+    static_configs:
+    - targets:
+      {%- for remote_grains in salt['mine.get']('I@roles:prometheus-alertmanager','grains.items',tgt_type='compound').values() %}
+      - {{ remote_grains.fqdn }}:9093
+      {%- endfor %}
+# Load and evaluate rules in this file every 'evaluation_interval' seconds.
+rule_files:
+  - '/etc/prometheus/rules/*.yml'
+
+# A scrape configuration containing exactly one endpoint to scrape:
+# Here it's Prometheus itself.
+scrape_configs:
+  # The job name is added as a label `job=<job_name>` to any timeseries scraped from this config.
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'alertmanager'
+    scheme: http
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+        {%- for remote_grains in salt['mine.get']('I@roles:prometheus-alertmanager','grains.items',tgt_type='compound').values() %}
+        - {{ remote_grains.fqdn }}:9093
+        {%- endfor %}
+
+  - job_name: node
+    # If prometheus-node-exporter is installed, grab stats about the local
+    # machine by default.
+    static_configs:
+      - targets:
+        {%- for remote_grains in salt['mine.get']('*', 'grains.items', tgt_type='glob').values() %}
+        - '{{ remote_grains.fqdn }}:9100'
+        {%- endfor %}
+    relabel_configs:
+      - source_labels: ['__address__']
+        separator:     ':'
+        regex:         '(.*):.*'
+        target_label:  'instance'
+        replacement:   '${1}'
+
+{% set nginx_targets = salt['prometheus.prometheus_targets_for_grain']('prometheus_nginx_export') %}
+  - job_name: nginx
+    scheme: https
+    metrics_path: /_metrics
+    static_configs:
+      - targets: {{ nginx_targets|yaml }}
+
+{% set mysqld_targets = salt['prometheus.prometheus_targets_for_grain']('prometheus_mysqld_export') %}
+  - job_name: mysqld
+    static_configs:
+      - targets: {{ mysqld_targets|yaml }}
+
+{% set bird_targets = salt['prometheus.prometheus_targets_for_grain']('prometheus_bird_export') %}
+  - job_name: bird
+    static_configs:
+      - targets: {{ bird_targets|yaml }}
+    relabel_configs:
+      - source_labels: ['__address__']
+        separator:     ':'
+        regex:         '(.*):.*'
+        target_label:  'instance'
+        replacement:   '${1}'
+
+{% set grafana_targets = salt['prometheus.prometheus_targets_for_grain']('prometheus_grafana_export') %}
+  - job_name: grafana
+    scheme: https
+    static_configs:
+      - targets: {{ grafana_targets|yaml }}
+
+{% set unbound_targets = salt['prometheus.prometheus_targets_for_grain']('prometheus_unbound_export') %}
+  - job_name: unbound
+    static_configs:
+      - targets: {{ unbound_targets|yaml }}
+
+{% set esphome_targets = salt['pillar.get']('prometheus:targets:esphome',[]) %}
+  - job_name: esphome
+    static_configs:
+      - targets: {{ esphome_targets|yaml }}
+
+{% set postfix_targets = salt['prometheus.prometheus_targets_for_grain']('prometheus_postfix_export') %}
+  - job_name: postfix
+    static_configs:
+      - targets: {{ postfix_targets|yaml }}
+    relabel_configs:
+      - source_labels: ['__address__']
+        separator:     ':'
+        regex:         '(.*):.*'
+        target_label:  'instance'
+        replacement:   '${1}'
+
+{% set dovecot_targets = salt['prometheus.prometheus_targets_for_grain']('prometheus_dovecot_export') %}
+  - job_name: dovecot
+    static_configs:
+      - targets: {{ dovecot_targets|yaml }}
+    relabel_configs:
+      - source_labels: ['__address__']
+        separator:     ':'
+        regex:         '(.*):.*'
+        target_label:  'instance'
+        replacement:   '${1}'
+
+{%- for remote_grains in salt['mine.get']('I@prometheus:blackbox:type:internal','grains.items',tgt_type='compound').values() %}
+  - job_name: icmp4-internal-{{remote_grains.host}}
+    metrics_path: /probe
+    params:
+      module: [icmp4]
+    static_configs:
+      - targets:
+        {%- for remote_grains in salt['mine.get']('*', 'grains.items', tgt_type='glob').values() if remote_grains.fqdn != grains.fqdn %}
+        - '{{ remote_grains.fqdn }}'
+        {%- endfor %}
+        {%- for target in salt['pillar.get']('prometheus:targets:icmp4-internal', []) %}
+        - '{{ target }}'
+        {%- endfor %}
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: {{ remote_grains.fqdn }}:9115
+{%- endfor %}
+{%- for remote_grains in salt['mine.get']('I@prometheus:blackbox:type:external','grains.items',tgt_type='compound').values() %}
+  - job_name: icmp4-external-{{remote_grains.host}}
+    metrics_path: /probe
+    params:
+      module: [icmp4]
+    static_configs:
+      - targets:
+        {%- for target in salt['pillar.get']('prometheus:targets:icmp4-external', []) %}
+        - '{{ target }}'
+        {%- endfor %}
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: {{ remote_grains.fqdn }}:9115
+  - job_name: icmp6-external-{{remote_grains.host}}
+    metrics_path: /probe
+    params:
+      module: [icmp6]
+    static_configs:
+      - targets:
+        {%- for target in salt['pillar.get']('prometheus:targets:icmp6-external', []) %}
+        - '{{ target }}'
+        {%- endfor %}
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: {{ remote_grains.fqdn }}:9115
+  - job_name: https-external-{{remote_grains.host}}
+    metrics_path: /probe
+    params:
+      module: [https_2xx]
+    static_configs:
+      - targets:
+        {%- for target in salt['pillar.get']('prometheus:targets:https-external', []) %}
+        - '{{ target }}'
+        {%- endfor %}
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: {{ remote_grains.fqdn }}:9115
+  - job_name: https-external-auth-{{remote_grains.host}}
+    metrics_path: /probe
+    params:
+      module: [https_2xx_auth]
+    static_configs:
+      - targets:
+        {%- for target in salt['pillar.get']('prometheus:targets:https-external-auth', []) %}
+        - '{{ target }}'
+        {%- endfor %}
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: {{ remote_grains.fqdn }}:9115
+  - job_name: dns-auth-v4-external-{{remote_grains.host}}
+    metrics_path: /probe
+    params:
+      module: [dns_soa4]
+    static_configs:
+      - targets:
+        {%- for target in salt['pillar.get']('prometheus:targets:dns-auth-external', []) %}
+        - '{{ target }}'
+        {%- endfor %}
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: {{ remote_grains.fqdn }}:9115
+  - job_name: dns-auth-v6-external-{{remote_grains.host}}
+    metrics_path: /probe
+    params:
+      module: [dns_soa6]
+    static_configs:
+      - targets:
+        {%- for target in salt['pillar.get']('prometheus:targets:dns-auth-external', []) %}
+        - '{{ target }}'
+        {%- endfor %}
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: {{ remote_grains.fqdn }}:9115
+
+# Mail IMAP
+  - job_name: imap-v6-external-{{remote_grains.host}}
+    metrics_path: /probe
+    params:
+      module: [imap_v6]
+    static_configs:
+      - targets:
+        {%- for target in salt['pillar.get']('prometheus:targets:imap-external', []) %}
+        - '{{ target }}:143'
+        {%- endfor %}
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: {{ remote_grains.fqdn }}:9115
+  - job_name: imap-v4-external-{{remote_grains.host}}
+    metrics_path: /probe
+    params:
+      module: [imap_v4]
+    static_configs:
+      - targets:
+        {%- for target in salt['pillar.get']('prometheus:targets:imap-external', []) %}
+        - '{{ target }}:143'
+        {%- endfor %}
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: {{ remote_grains.fqdn }}:9115
+
+# Mail smtp submission
+  - job_name: submission-v6-external-{{remote_grains.host}}
+    metrics_path: /probe
+    params:
+      module: [submission_v6]
+    static_configs:
+      - targets:
+        {%- for target in salt['pillar.get']('prometheus:targets:smtp-external', []) %}
+        - '{{ target }}:587'
+        {%- endfor %}
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: {{ remote_grains.fqdn }}:9115
+  - job_name: submission-v4-external-{{remote_grains.host}}
+    metrics_path: /probe
+    params:
+      module: [submission_v4]
+    static_configs:
+      - targets:
+        {%- for target in salt['pillar.get']('prometheus:targets:smtp-external', []) %}
+        - '{{ target }}:587'
+        {%- endfor %}
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: {{ remote_grains.fqdn }}:9115
+# Mail smtps submission
+  - job_name: submission-v6-tls-external-{{remote_grains.host}}
+    metrics_path: /probe
+    params:
+      module: [submission_v6_tls]
+    static_configs:
+      - targets:
+        {%- for target in salt['pillar.get']('prometheus:targets:smtp-external', []) %}
+        - '{{ target }}:465'
+        {%- endfor %}
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: {{ remote_grains.fqdn }}:9115
+  - job_name: submission-v4-tls-external-{{remote_grains.host}}
+    metrics_path: /probe
+    params:
+      module: [submission_v4_tls]
+    static_configs:
+      - targets:
+        {%- for target in salt['pillar.get']('prometheus:targets:smtp-external', []) %}
+        - '{{ target }}:465'
+        {%- endfor %}
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: {{ remote_grains.fqdn }}:9115
+
+# Mail public smtp
+  - job_name: smtp-v6-external-{{remote_grains.host}}
+    metrics_path: /probe
+    params:
+      module: [smtp_v6]
+    static_configs:
+      - targets:
+        {%- for target in salt['pillar.get']('prometheus:targets:smtp-external', []) %}
+        - '{{ target }}:25'
+        {%- endfor %}
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: {{ remote_grains.fqdn }}:9115
+  - job_name: smtp-v4-external-{{remote_grains.host}}
+    metrics_path: /probe
+    params:
+      module: [smtp_v4]
+    static_configs:
+      - targets:
+        {%- for target in salt['pillar.get']('prometheus:targets:smtp-external', []) %}
+        - '{{ target }}:25'
+        {%- endfor %}
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: {{ remote_grains.fqdn }}:9115
+
+{%- endfor %}
+{%- for remote_grains in salt['mine.get']('I@prometheus:blackbox:type:internal','grains.items',tgt_type='compound').values() %}
+  - job_name: dns-auth-internal-{{remote_grains.host}}
+    metrics_path: /probe
+    params:
+      module: [dns_soa]
+    static_configs:
+      - targets:
+        {%- for target in salt['pillar.get']('prometheus:targets:dns-auth-internal', []) %}
+        - '{{ target }}'
+        {%- endfor %}
+        {%- for t in salt['mine.get']('I@roles:dns','grains.items',tgt_type='compound').values() %}
+        - '{{ t.fqdn }}'
+        {%- endfor %}
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: {{ remote_grains.fqdn }}:9115
+{%- endfor %}

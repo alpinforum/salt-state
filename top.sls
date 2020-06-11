@@ -21,3 +21,6 @@
   'roles:salt-master':
     - match: pillar
     - salt.master
+  'roles:prometheus':
+    - match: pillar
+    - prometheus.prometheus

@@ -1,0 +1,24 @@
+groups:
+- name: backup
+  rules:
+  - alert: LatestStart
+    expr: time() - backup_last_start > 3600 * 8
+    labels:
+      severity: warning
+    annotations:
+      description: 'The backup on {{ $labels.instance }} was started too long ago'
+      summary: 'Backup was started {{ $value | humanizeDuration }} ago'
+  - alert: LatestSuccess
+    expr: time() - backup_last_success > 3600 * 24
+    labels:
+      severity: critical
+    annotations:
+      description: 'The backup on {{ $labels.instance }} succeded too long ago'
+      summary: 'Backup succeeded {{ $value | humanizeDuration }} ago'
+  - alert: LatestMySQL
+    expr: time() - backup_last_mysql > 3600 * 2
+    labels:
+      severity: high
+    annotations:
+      description: 'The mysql backup on {{ $labels.instance }} succeded too long ago'
+      summary: 'MySQL Backup succeeded {{ $value | humanizeDuration }} ago'

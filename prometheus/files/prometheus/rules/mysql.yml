@@ -1,0 +1,27 @@
+groups:
+- name: mysql_slave
+  rules:
+    - alert: SlowSlave
+      expr: mysql_slave_status_seconds_behind_master > 100
+      for: 1m
+      labels:
+        severity: high
+      annotations:
+        description: 'Slave {{ $labels.master_host }} on {{ $labels.instance }} is slow'
+        summary: 'Slave {{ $labels.master_host }} on {{ $labels.instance }} is slow ({{ $value }})'
+    - alert: SlaveIODefect
+      expr: mysql_slave_status_slave_io_running != 1
+      for: 1m
+      labels:
+        severity: high
+      annotations:
+        description: 'Slave IO {{ $labels.master_host }} on {{ $labels.instance }} not running'
+        summary: 'Slave IO {{ $labels.master_host }} on {{ $labels.instance }} not running'
+    - alert: SlaveSQLDefect
+      expr: mysql_slave_status_slave_sql_running != 1
+      for: 1m
+      labels:
+        severity: high
+      annotations:
+        description: 'Slave SQL {{ $labels.master_host }} on {{ $labels.instance }} not running'
+        summary: 'Slave SQL {{ $labels.master_host }} on {{ $labels.instance }} not running'

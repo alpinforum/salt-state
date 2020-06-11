@@ -1,0 +1,331 @@
+groups:
+- name: CPU rules
+  interval: 1m
+  rules:
+  # The count of CPUs per node, useful for getting CPU time as a percent of total.
+  - record: instance:node_cpus:count
+    expr: >
+      count without (cpu, mode) (
+        node_cpu_seconds_total{mode="idle"}
+      )
+  # CPU in use by CPU.
+  - record: instance_cpu:node_cpu_seconds_not_idle:rate1m
+    expr: >
+      sum without (mode) (
+        rate(node_cpu_seconds_total{mode!="idle"}[1m])
+      )
+  # CPU in use by mode.
+  - record: instance_mode:node_cpu_seconds:rate1m
+    expr: >
+      sum without (cpu) (
+        rate(node_cpu_seconds_total[1m])
+      )
+  - record: instance_mode:node_cpu_seconds:rate5m
+    expr: >
+      sum without (cpu) (
+        rate(node_cpu_seconds_total[5m])
+      )
+  # CPU in use ratio.
+  - record: instance:node_cpu_utilization:ratio
+    expr: >
+      sum without (mode) (
+        instance_mode:node_cpu_seconds:rate1m{mode!="idle"}
+      ) / instance:node_cpus:count
+  # CPU iowait ratio.
+  - record: instance:node_cpu_utilization_iowait:ratio
+    expr: >
+      sum without (mode) (
+        instance_mode:node_cpu_seconds:rate1m{mode="iowait"}
+      ) / instance:node_cpus:count
+  # CPU summaries
+  - record: job:node_cpu_utilization:min_ratio
+    expr: >
+      min without (fqdn, instance) (
+        instance:node_cpu_in_use:ratio
+      )
+  - record: job:node_cpu_utilization:avg_ratio
+    expr: >
+      avg without (fqdn, instance) (
+        instance:node_cpu_in_use:ratio
+      )
+  - record: job:node_cpu_utilization:max_ratio
+    expr: >
+      max without (fqdn, instance) (
+        instance:node_cpu_in_use:ratio
+      )
+
+  # CPU Alerts
+  - alert: HighCPU
+    expr: instance:node_cpu_utilization:ratio > 0.90
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      description: CPU use percent is extremely high on {{ if $labels.fqdn }}{{ $labels.fqdn
+        }}{{ else }}{{ $labels.instance }}{{ end }} for the past 5 min.
+      summary: CPU use percent is extremely high on {{ if $labels.fqdn }}{{ $labels.fqdn
+        }}{{ else }}{{ $labels.instance }}{{ end }} for the past 5 min.
+  - alert: HighCPU
+    expr: instance:node_cpu_utilization:ratio > 0.90
+    for: 30m
+    labels:
+      severity: high
+    annotations:
+      description: CPU use percent is extremely high on {{ if $labels.fqdn }}{{ $labels.fqdn
+        }}{{ else }}{{ $labels.instance }}{{ end }} for the past 30 min.
+      summary: CPU use percent is extremely high on {{ if $labels.fqdn }}{{ $labels.fqdn
+        }}{{ else }}{{ $labels.instance }}{{ end }} for the past 30 min.
+  - alert: HighCPU
+    expr: instance:node_cpu_utilization:ratio > 0.95
+    for: 2h
+    labels:
+      severity: critical
+    annotations:
+      description: CPU use percent is extremely high on {{ if $labels.fqdn }}{{ $labels.fqdn
+        }}{{ else }}{{ $labels.instance }}{{ end }} for the past 2 hours.
+      summary: CPU use percent is extremely high on {{ if $labels.fqdn }}{{ $labels.fqdn
+        }}{{ else }}{{ $labels.instance }}{{ end }} for the past 2 hours.
+  # CPU IOWait Alerts
+  - alert: HighIOWait
+    expr: instance:node_cpu_utilization_iowait:ratio > 0.50
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      description: iowait percent is extremely high on {{ if $labels.fqdn }}{{ $labels.fqdn
+        }}{{ else }}{{ $labels.instance }}{{ end }} for the past 5 min.
+      summary: iowait percent is extremely high on {{ if $labels.fqdn }}{{ $labels.fqdn
+        }}{{ else }}{{ $labels.instance }}{{ end }} for the past 5 min.
+  - alert: HighIOWait
+    expr: instance:node_cpu_utilization_iowait:ratio > 0.50
+    for: 30m
+    labels:
+      severity: high
+    annotations:
+      description: iowait percent is extremely high on {{ if $labels.fqdn }}{{ $labels.fqdn
+        }}{{ else }}{{ $labels.instance }}{{ end }} for the past 30 min.
+      summary: iowait percent is extremely high on {{ if $labels.fqdn }}{{ $labels.fqdn
+        }}{{ else }}{{ $labels.instance }}{{ end }} for the past 30 min.
+  - alert: HighIOWait
+    expr: instance:node_cpu_utilization_iowait:ratio > 0.7
+    for: 2h
+    labels:
+      severity: critical
+    annotations:
+      description: iowait percent is extremely high on {{ if $labels.fqdn }}{{ $labels.fqdn
+        }}{{ else }}{{ $labels.instance }}{{ end }} for the past 2 hours.
+      summary: iowait percent is extremely high on {{ if $labels.fqdn }}{{ $labels.fqdn
+        }}{{ else }}{{ $labels.instance }}{{ end }} for the past 2 hours.
+  # Load Alerts
+  - alert: HighLoad
+    expr: node_load5 / instance:node_cpus:count>2
+    labels:
+      severity: critical
+    annotations:
+      description: Load percent is extremely high on {{ if $labels.fqdn }}{{ $labels.fqdn
+        }}{{ else }}{{ $labels.instance }}{{ end }}
+      summary: Load percent is extremely high on {{ if $labels.fqdn }}{{ $labels.fqdn
+        }}{{ else }}{{ $labels.instance }}{{ end }}
+  - alert: HighLoadLong
+    expr: node_load5 / instance:node_cpus:count>1
+    for: 1h
+    labels:
+      severity: critical
+    annotations:
+      description: Load percent is high >1h on {{ if $labels.fqdn }}{{ $labels.fqdn
+        }}{{ else }}{{ $labels.instance }}{{ end }}
+      summary: Load percent is high >1h on {{ if $labels.fqdn }}{{ $labels.fqdn
+        }}{{ else }}{{ $labels.instance }}{{ end }}        
+# Rules for calculating and alerting on long-term node utilization issues.
+- name: Utilization
+  interval: 300s
+  rules:
+  - record: instance:cpu_utilization:ratio_max
+    expr: max_over_time(instance:node_cpu_utilization:ratio[300s])
+  - record: instance:cpu_utilization:ratio_avg
+    expr: avg_over_time(instance:node_cpu_utilization:ratio[300s])
+  - record: instance:cpu_utilization:ratio_q95
+    expr: quantile_over_time(0.95, instance:node_cpu_utilization:ratio[300s])
+  - record: instance:memory_utilization:ratio_max
+    expr: max_over_time(instance:node_memory_utilization:ratio[300s])
+  - record: instance:memory_utilization:ratio_avg
+    expr: avg_over_time(instance:node_memory_utilization:ratio[300s])
+  - record: instance:memory_utilization:ratio_q95
+    expr: quantile_over_time(0.95, instance:node_memory_utilization:ratio[300s])
+
+- name: Node memory
+  rules:
+  - record: instance:node_memory_available:ratio
+    expr: >
+      (
+        node_memory_MemAvailable_bytes or
+        (node_memory_MemFree_bytes + node_memory_Buffers_bytes + node_memory_Cached_bytes)
+      ) /
+      node_memory_MemTotal_bytes
+  - record: instance:node_memory_utilization:ratio
+    expr: 1 - instance:node_memory_available:ratio
+  - alert: HighMemoryPressure
+    expr: instance:node_memory_available:ratio * 100 < 5 and rate(node_vmstat_pgmajfault[1m]) > 1000
+    for: 1m
+    labels:
+      severity: high
+    annotations:
+      description: The node {{ $labels.instance }} is under heavy memory pressure.  The available memory is under 5% and
+        there is a high rate of major page faults.
+      runbook: troubleshooting/node_memory_alerts.md
+      value: 'Available memory {{ $value | printf "%.2f" }}%'
+      summary: Node {{ $labels.instance }} is under heavy memory pressure
+
+- name: Node filesystem rules
+  rules:
+  - record: instance:node_filesystem_avail:ratio
+    expr: node_filesystem_avail_bytes{device=~"merger.*|/dev/.+"} / node_filesystem_size_bytes{device=~"merger.*|/dev/.+"}
+  - record: instance:node_disk_writes_completed:irate1m
+    expr: sum(irate(node_disk_writes_completed_total{device=~"sd.*"}[1m])) WITHOUT (device)
+  - record: instance:node_disk_reads_completed:irate1m
+    expr: sum(irate(node_disk_reads_completed_total{device=~"sd.*"}[1m])) WITHOUT (device)
+  - alert: FilesystemFullSoon
+    expr: predict_linear(node_filesystem_avail_bytes{fstype=~"(ext.|xfs|zfs|nfs|btrfs|zfs|nfs|btrfs|fuse.mergerfs)"}[6h], 24 * 3600) < 0
+    for: 4h
+    labels:
+      severity: warning
+    annotations:
+      summary: 'Filesystem will be full SOON'
+      description: |
+        The filesystem {{ $labels.mountpoint }} on {{ if $labels.fqdn }}{{ $labels.fqdn }}{{ else }}{{ $labels.instance }}{{ end }} is predicted to be full in will be full in the next 24 hours.
+      instance: '{{ $labels.instance }}'
+      device: '{{ $labels.device }}'
+      mountpoint: '{{ $labels.mountpoint }}'
+  - alert: LowDiskSpace
+    expr: instance:node_filesystem_avail:ratio{fstype=~"(fuse.mergerfs|ext.|xfs|zfs|nfs|btrfs)",mountpoint!="/boot",job="node"} * 100 <= 10
+    for: 15m
+    labels:
+      severity: high
+    annotations:
+      summary: 'Less than 10% disk space left on {{ $labels.mountpoint }}'
+      description: |
+       {{ $labels.mountpoint }} on {{ if $labels.fqdn }}{{ $labels.fqdn }}{{ else }}{{ $labels.instance }}{{ end }}
+      runbook: troubleshooting/filesystem_alerts.md
+      value: '{{ $value | humanize }}%'
+      device: '{{ $labels.device }}%'
+      mount_point: '{{ $labels.mountpoint }}%'
+  - alert: NoDiskSpace
+    expr: instance:node_filesystem_avail:ratio{fstype=~"(ext.|xfs|zfs|nfs|btrfs|fuse.mergerfs)",job="node"} * 100 <= 1
+    for: 15m
+    labels:
+      severity: critical
+    annotations:
+      summary: '1% disk space left'
+      description: "There's only 1% disk space left {{ $labels.mountpoint }} on {{ if $labels.fqdn }}{{ $labels.fqdn }}{{ else }}{{ $labels.instance }}{{ end }}"
+      value: '{{ $value | humanize }}%'
+      device: '{{ $labels.device }}%'
+      mount_point: '{{ $labels.mountpoint }}%'
+  - alert: NoDiskSpace
+    expr: node_filesystem_avail_bytes{fstype=~"(ext.|xfs|zfs|nfs|btrfs|fuse.mergerfs)",mountpoint!="/boot",job="node"} / 1024 / 1024 < 1024
+    for: 15m
+    labels:
+      severity: critical
+    annotations:
+      summary: '1GB disk space left'
+      description: "There's only 1GB disk space left {{ $labels.mountpoint }} on {{ if $labels.fqdn }}{{ $labels.fqdn }}{{ else }}{{ $labels.instance }}{{ end }}"
+      value: '{{ $value | humanize }}%'
+      device: '{{ $labels.device }}%'
+      mount_point: '{{ $labels.mountpoint }}%'
+  - alert: HighInodeUsage
+    expr: node_filesystem_files_free{fstype=~"(ext.|xfs|zfs|nfs|btrfs|fuse.mergerfs)",job="node"} / node_filesystem_files{fstype=~"(ext.|xfs|zfs|nfs|btrfs)",job="node"}
+      * 100 <= 20
+    for: 15m
+    labels:
+      severity: high
+    annotations:
+      summary: "High number of inode usage on {{ $labels.mountpoint }}"
+      description: |
+        "High Inode usage for Mountpoint {{ $labels.mountpoint }} on {{ if $labels.fqdn }}{{ $labels.fqdn }}{{ else }}{{ $labels.instance }}{{ end }}"
+      runbook: troubleshooting/filesystem_alerts_inodes.md
+      value: '{{ $value | printf "%.2f" }}%'
+      device: '{{ $labels.device }}%'
+      mount_point: '{{ $labels.mountpoint }}%'
+  - alert: HostContextSwitching
+    expr: rate(node_context_switches_total[5m]) > 2*rate(node_context_switches_total[24h])
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Host context switching (instance {{ $labels.instance }})"
+      description: "Context switching is higher than average\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+- name: Node Components
+  interval: 1m
+  rules:
+  - record: node:iowait:rate1m
+    labels:
+      component: 'iowait'
+    expr: >
+      avg by(fqdn, instance) (rate(node_cpu_seconds_total{mode="iowait"}[1m]))
+  - record: node:disk_read_seconds:rate1m
+    labels:
+      component: 'disk_read_seconds'
+    expr: >
+      sum by(fqdn, instance) (rate(node_disk_read_time_seconds_total[1m]))
+  - record: node:disk_write_seconds:rate1m
+    labels:
+      component: 'disk_write_seconds'
+    expr: >
+      sum by(fqdn, instance) (rate(node_disk_write_time_seconds_total[1m]))
+
+- name: Node Service Rate Stats
+  interval: 1m
+  rules:
+  # Average values for each component, over a week
+  - record: node:iowait:rate1m:avg_over_time_1w
+    expr: >
+      avg_over_time(node:iowait:rate1m[1w])
+  # Stddev for each component, over a week
+  - record: node:iowait:rate1m:stddev_over_time_1w
+    expr: >
+      stddev_over_time(node:iowait:rate1m[1w])
+
+- name: systemd
+  rules:
+  - record: node:systemd:unit:failed
+    expr: >
+      node_systemd_unit_state{state="failed"} > 0
+  - alert: ServiceFailed
+    expr: node:systemd:unit:failed
+    for: 1m
+    labels:
+      severity: info
+    annotations:
+      description: 'A systemd unit went into failed state'
+      summary: 'Instance {{ $labels.instance }}: Service {{ $labels.name }} failed'
+      value: '{{ $labels.name }}'
+  - alert: ServiceFailed
+    expr: node:systemd:unit:failed
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      description: 'A systemd unit went into failed state for more than 30 min'
+      summary: 'Instance {{ $labels.instance }}: Service {{ $labels.name }} failed for more than 30 min'
+      value: '{{ $labels.name }}'
+
+  - alert: ServiceFlapping
+    expr: changes(node:systemd:unit:failed[5m]) > 5 or
+     (changes(node:systemd:unit:failed[1h]) > 15 unless changes(node:systemd:unit:failed[30m]) < 7)
+    labels:
+      severity: critical
+    annotations:
+      description: 'A systemd service changed its state more than 5x/5min or 15x/1h'
+      summary: 'Instance {{ $labels.instance }}: Service {{ $labels.name }} is flapping'
+      value: '{{ $labels.name }}'
+
+- name: NodeExporter
+  rules:
+  - alert: CollectorFailed
+    for: 5m
+    expr: node_scrape_collector_success!=1
+    labels:
+      severity: warning
+    annotations:
+      description: 'A node-exporter collector failed'
+      summary: 'Collector {{ $labels.collector }} on {{ $labels.instance }} failed'
