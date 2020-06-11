@@ -1,4 +1,4 @@
-{% set ferm_enabled = salt['pillar.get']('ferm', False) %}
+{% set ferm_enabled = True %}
 
 ferm_conf_init:
   file.directory:
