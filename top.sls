@@ -18,3 +18,6 @@
     {%- if salt['grains.get']('virtual','physical') in ('kvm') %}
     - common.kvm
     {%- endif %}
+  'roles:salt-master':
+    - match: pillar
+    - salt.master
