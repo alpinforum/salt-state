@@ -30,14 +30,14 @@ node-exporter tarball:
 
 /etc/default/prometheus-node-exporter:
   file.managed:
-    - source: salt://prometheus/files/prometheus-node-exporter
+    - source: salt://prometheus/files/node-exporter/prometheus-node-exporter
     - user: root
     - group: root
     - mode: '0644'
 
 /etc/systemd/system/prometheus-node-exporter.service:
   file.managed:
-    - source: salt://prometheus/files/prometheus-node-exporter.service.j2
+    - source: salt://prometheus/files/node-exporter/prometheus-node-exporter.service.j2
     - template: jinja
     - watch_in:
       - service: prometheus-node-exporter.service

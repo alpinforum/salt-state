@@ -1,6 +1,6 @@
 /usr/local/sbin/checkrestart_exporter.sh:
   file.managed:
-    - source: salt://prometheus/files/checkrestart_exporter.sh
+    - source: salt://prometheus/files/checkrestart/checkrestart_exporter.sh
     - user: root
     - group: root
     - mode: '0755'
@@ -10,7 +10,7 @@
 
 /etc/systemd/system/checkrestart_exporter.service:
   file.managed:
-    - source: salt://prometheus/files/checkrestart_exporter.service
+    - source: salt://prometheus/files/checkrestart/checkrestart_exporter.service
     - user: root
     - group: root
     - mode: '0644'
@@ -28,7 +28,7 @@
 
 /etc/systemd/system/checkrestart_exporter.timer:
    file.managed:
-     - source: salt://prometheus/files/checkrestart_exporter.timer
+     - source: salt://prometheus/files/checkrestart/checkrestart_exporter.timer
      - user: root
      - group: root
      - mode: '0644'
