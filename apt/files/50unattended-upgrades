@@ -12,6 +12,7 @@ Unattended-Upgrade::Origins-Pattern {
 	"origin=Proxmox,archive=stable";
 	"origin=SaltStack";
 	"origin=nginx";
+	"origin=Node Source";
 };
 
 
