@@ -24,3 +24,6 @@
   'roles:prometheus':
     - match: pillar
     - prometheus.prometheus
+  'roles:mariadb':
+    - mariadb
+
